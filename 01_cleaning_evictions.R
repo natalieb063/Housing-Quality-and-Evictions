@@ -17,28 +17,31 @@ library(data.table)
 
 #PATHS & VARS###################################################################
 
-marshals_evictions_path <- "_"
-data.path <- "_" 
+evictions_path <- "/Users/nataliebrown/Desktop/housing_quality_nyc/evictions/"
+#data.path <- "_" 
 
 #DATA##########################################################################
 
-evictions_20260219 <- read.csv(paste0(marshals_evictions_path, 'Evictions_20260219.csv'))
+#import
+evictions_2019_2021 <- read.csv(paste0(evictions_path, 'evictions_2019_2021.csv'))
+evictions_2022_2025 <- read.csv(paste0(evictions_path, 'evictions_2022_2025.csv'))
 
-evictions_distinct=evictions_20260219 %>% distinct() #there are 6 duplicates
+#bind rows 
 
-evictions_distinct_limited=
-  evictions_20260219 %>% distinct(BIN, Eviction.Address, Eviction.Apartment.Number, Executed.Date, BOROUGH, 
-                                  Court.Index.Number, Docket.Number. )
+rm(evictions)
+evictions_raw <- bind_rows(evictions_2019_2021, evictions_2022_2025)
+
+evictions_distinct <- evictions_raw %>% distinct() #there are __ duplicates
 
 #removing commercial evictions and names for Marshals
-evictions_res_20260219 <- evictions_20260219 %>%
+evictions_res <- evictions_raw %>%
   filter(Residential.Commercial == "Residential") %>% 
   select(-c(Marshal.First.Name, Marshal.Last.Name, Residential.Commercial)) %>%
   mutate(evic_date = as.Date(Executed.Date, "%m/%d/%Y"),
          evic_year = year(evic_date))
 
 #quick check of evictions per building
-evictions_res_20260219 %>%
+evictions_res %>%
   group_by(BIN) %>%
   summarise(n_evic = n()) %>%
   arrange(desc(n_evic))
@@ -47,7 +50,7 @@ evictions_res_20260219 %>%
 #isolating junk bins
 junk_bin <- c(1000000, 2000000, 3000000, 4000000, 5000000)
 
-junk_bins <- evictions_res_20260219 %>%
+junk_bins <- evictions_res %>%
   filter(BIN %in% junk_bin | is.na(BIN)) %>%
   mutate(address = Eviction.Address) %>%
   separate(col = address,
@@ -56,8 +59,8 @@ junk_bins <- evictions_res_20260219 %>%
            extra = "merge")
 
 #isolating the evictions that already have BINs
-not_junk_bins <- evictions_res_20260219 %>%
-filter(!BIN %in% junk_bin | !is.na(BIN))
+not_junk_bins <- evictions_res %>%
+filter(!BIN %in% junk_bin & !is.na(BIN))
 
 #ADDRESS CLEANING FOR GEOCODING TO GET BIN
 
