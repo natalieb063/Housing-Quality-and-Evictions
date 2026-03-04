@@ -5,8 +5,6 @@
 ### DATE:          2/16/2026                                                ###
 ###############################################################################
 
-
-Sys.setenv(http_proxy = "bcpxy.nycnet:8080")
 rm(list = ls())
 options(scipen=999)
 
@@ -21,14 +19,14 @@ library(data.table)
 
 #PATHS & VARS###################################################################
 
-charges_path <- "//Chgoldfs/dmhhs/CIDI Staff/Projects/Evictions/2026_top_evicters/data/hpd_invoices_and_charges/"
-output.path='//CHGOLDFS/Cidi_Secure/eviction/evictions_2026/cleaned_data/'
-geocoded_path <- "//CHGOLDFS/CIDI_Secure/eviction/evictions_2026/geocoding/"
-geo.output.path="//CHGOLDFS/CIDI_Secure/eviction/evictions_2026/geocoding/to_be_geocoded/"
+charges_path <-
+output.path <- 
+geocoded_path <- 
+geo.output.path <- 
 #DATA##########################################################################
 
-invoices <- read_csv("//Chgoldfs/dmhhs/CIDI Staff/Projects/Evictions/2026_top_evicters/data/hpd_invoices_and_charges/invoices.csv")
-charges_invoices <- read_csv("//Chgoldfs/dmhhs/CIDI Staff/Projects/Evictions/2026_top_evicters/data/hpd_invoices_and_charges/charges.csv") %>%
+invoices <- read_csv(_)
+charges_invoices <- read_csv(_) %>%
   mutate(OMOCreateDate = mdy(OMOCreateDate)) %>%
   filter(year(OMOCreateDate) > 2022 & year(OMOCreateDate) < 2026) %>%
   left_join(invoices, by = "OMONumber")
