@@ -26,10 +26,8 @@ output.path=
 
 violations <- read_csv(paste0(data.path, 'viol_by_year_final.csv'))
 evictions <- read_csv(paste0(data.path, 'evic_by_year_final.csv'))
-aep <- read_csv(paste0(data.path, 'aep_by_BIN.csv'))
 hpdjuris <- read_csv(paste0(data.path, 'hpdjuris_by_BIN.csv'))
 charges_invoices <- read_csv(paste0(data.path, 'erp_by_year.csv'))
-nycha <- read_csv(paste0(data.path, 'nycha_by_BIN.csv'))
 
 #MERGING########################################################################
 
@@ -99,27 +97,9 @@ print(na_counts) #16 rows with no zip in raw hpdjuris data
 sum(is.na(df3$BIN))
 sum(is.na(df3$n_units)) #not 0, so some units do not have # of units from hpd
 
-#merging in aep
-df4 <- full_join(df3, aep, by = "BIN") %>%
-  rename(full_address_aep = full_address,
-         zip_aep = Postcode,
-         borough_aep = BOROUGH,
-         n_units_aep = TOTAL_UNITS)
-
-sum(is.na(df4$BIN))
-#all AEP buildings are in df3
-
-
-#merging in nycha
-df5 <- left_join(df4, nycha, by = "BIN") %>%
-  rename(full_address_nycha = ADDRESS,
-         borough_nycha = BOROUGH,
-         zip_nycha = zipcode)
-
-
 #picking addresses
 
-master_dataset <- df5 %>%
+master_dataset <- df3 %>%
   mutate(full_address = coalesce(full_address_viol, full_address_hpd_juris, 
                                  full_address_charge_invoice, full_address_nycha,
                                  full_address_aep, full_address_evic),
