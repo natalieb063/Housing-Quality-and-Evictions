@@ -18,7 +18,7 @@ library(data.table)
 #PATHS & VARS###################################################################
 
 evictions_path <- "/Users/nataliebrown/Desktop/housing_quality_nyc/evictions/"
-#data.path <- "_" 
+export_path <- "/Users/nataliebrown/Desktop/housing_quality_nyc/outputs/to_be_geocoded" 
 
 #DATA##########################################################################
 
@@ -33,6 +33,7 @@ evictions_raw <- bind_rows(evictions_2019_2021, evictions_2022_2025)
 
 evictions_distinct <- evictions_raw %>% distinct() #there are __ duplicates
 
+#DATA CLEANING#################################################################
 #removing commercial evictions and names for Marshals
 evictions_res <- evictions_raw %>%
   filter(Residential.Commercial == "Residential") %>% 
@@ -73,110 +74,84 @@ junk_bins$street=trimws(junk_bins$street)
 #remove non-numeric values from the house number field.
 junk_bins$house_number=gsub('[^0-9.-]','',junk_bins$house_number)
 
-#cleaning specific data issues (NB: can this code be done more efficiently?)
-junk_bins$street = gsub("\\ NO. .*","", junk_bins$street)
-junk_bins$street = gsub("\\ APT .*","", junk_bins$street)
-junk_bins$street = gsub("\\ APT.*","", junk_bins$street)
-junk_bins$street = gsub("\\APT.*","", junk_bins$street)
-junk_bins$street = gsub("\\ APARTMENT .*","", junk_bins$street)
-junk_bins$street = gsub("\\ APARTMENT.*","", junk_bins$street)
-junk_bins$street = gsub("\\ BLDG .*","", junk_bins$street)
-junk_bins$street = gsub("\\ BUILDING .*","", junk_bins$street)
-junk_bins$street = gsub("\\ UNIT .*","", junk_bins$street)
-junk_bins$street = gsub("\\ UNIT.*","", junk_bins$street)
-junk_bins$street = gsub("\\ FL .*","", junk_bins$street)
-junk_bins$street = gsub("\\ FLR .*","", junk_bins$street)
-junk_bins$street = gsub("\\ FLOOR .*","", junk_bins$street)
-junk_bins$street = gsub("\\ RM .*","", junk_bins$street)
-junk_bins$street = gsub("\\ ROOM .*","", junk_bins$street)
-junk_bins$street = gsub("\\ 1ST FL.*","", junk_bins$street)
-junk_bins$street = gsub("\\ FIRST FL.*","", junk_bins$street)
-junk_bins$street = gsub("\\ 1ST FLR.*","", junk_bins$street)
-junk_bins$street = gsub("\\ 2ND FL.*","", junk_bins$street)
-junk_bins$street = gsub("\\ SECOND FL.*","", junk_bins$street)
-junk_bins$street = gsub("\\ 2ND FLR.*","", junk_bins$street)
-junk_bins$street = gsub("\\ 3RD FL.*","", junk_bins$street)
-junk_bins$street = gsub("\\ THIRD FL.*","", junk_bins$street)
-junk_bins$street = gsub("\\ 3RD FLR.*","", junk_bins$street)
-# junk_bins$street = gsub("\\ A/K/A.*", "", junk_bins$street)
-junk_bins$street = gsub("\\ ENTIRE.*", "", junk_bins$street)
-junk_bins$street = gsub("\\ENTIRE.*", "", junk_bins$street)
-junk_bins$street = gsub("\\(.*", "", junk_bins$street)
-junk_bins$street = gsub("\\CLOSET.*", "", junk_bins$street)
-junk_bins$street = gsub("\\GROUND.*", "", junk_bins$street)
-junk_bins$street = gsub("\\BASEMENT.*", "", junk_bins$street)
-junk_bins$street = gsub("\\DOOR.*", "", junk_bins$street)
-junk_bins$street = gsub("\\CONSISTING.*", "", junk_bins$street)
-#junk_bins$street = gsub("\\AKA.*", "", junk_bins$street)
-junk_bins$street = gsub(".* AKA ", "", junk_bins$street)
-junk_bins$street = gsub(".* A K A ", "", junk_bins$street)
-junk_bins$street = gsub("AKA","", junk_bins$street)
-junk_bins$street = gsub("\\LIVING.*", "", junk_bins$street)
-junk_bins$street = gsub("\\ALL ROOMS.*", "", junk_bins$street)
-junk_bins$street = gsub("\\,.*", "", junk_bins$street)
-junk_bins$street = gsub("\\ROOMS.*", "", junk_bins$street)
-junk_bins$street = gsub("\\ALL COMMON AREAS.*", "", junk_bins$street)
-junk_bins$street = gsub("\\FRONT ENTRANCE.*", "", junk_bins$street)
-junk_bins$street = gsub("\\  ", " ", junk_bins$street)
-junk_bins$street = gsub("\\   ", " ", junk_bins$street)
-junk_bins$street = gsub("\\    ", " ", junk_bins$street)
-junk_bins$street = gsub("\\STREE T", "STREET", junk_bins$street)
-junk_bins$street = gsub("\\STRE ET", "STREET", junk_bins$street)
-junk_bins$street = gsub("\\STR EET", "STREET", junk_bins$street)
-junk_bins$street = gsub("\\ST REET", "STREET", junk_bins$street)
-junk_bins$street = gsub("\\S TREET", "STREET", junk_bins$street)
-junk_bins$street = gsub("\\P LACE", "PLACE", junk_bins$street)
-junk_bins$street = gsub("\\PL ACE", "PLACE", junk_bins$street)
-junk_bins$street = gsub("\\PLA CE", "PLACE", junk_bins$street)
-junk_bins$street = gsub("\\PLAC E", "PLACE", junk_bins$street)
-junk_bins$street = gsub("\\BOYL AND", "BOYLAND", junk_bins$street)
-junk_bins$street = gsub("\\BBOYLAND", "BOYLAND", junk_bins$street)
-junk_bins$street = gsub("\\PO WELL", "POWELL", junk_bins$street)
-junk_bins$street = gsub("\\WES T", "WEST", junk_bins$street)
-junk_bins$street = gsub("\\WE ST", "WEST", junk_bins$street)
-junk_bins$street = gsub("\\W EST", "WEST", junk_bins$street)
-junk_bins$street = gsub("\\S OUTH", "SOUTH", junk_bins$street)
-junk_bins$street = gsub("\\SO UTH", "SOUTH", junk_bins$street)
-junk_bins$street = gsub("\\SOU TH", "SOUTH", junk_bins$street)
-junk_bins$street = gsub("\\SOUT H", "SOUTH", junk_bins$street)
-junk_bins$street = gsub("\\B OULEVARD", "BOULEVARD", junk_bins$street)
-junk_bins$street = gsub("\\BO ULEVARD", "BOULEVARD", junk_bins$street)
-junk_bins$street = gsub("\\BOU LEVARD", "BOULEVARD", junk_bins$street)
-junk_bins$street = gsub("\\BOUL EVARD", "BOULEVARD", junk_bins$street)
-junk_bins$street = gsub("\\BOULE VARD", "BOULEVARD", junk_bins$street)
-junk_bins$street = gsub("\\BOULEV ARD", "BOULEVARD", junk_bins$street)
-junk_bins$street = gsub("\\BOULEVA RD", "BOULEVARD", junk_bins$street)
-junk_bins$street = gsub("\\BOULEVAR D", "BOULEVARD", junk_bins$street)
-junk_bins$street = gsub("\\BLVD", "BOULEVARD", junk_bins$street)
-junk_bins$street = gsub("\\BL VD", "BOULEVARD", junk_bins$street)
-junk_bins$street = gsub("\\A VENUE", "AVENUE", junk_bins$street)
-junk_bins$street = gsub("\\AV ENUE", "AVENUE", junk_bins$street)
-junk_bins$street = gsub("\\AVE NUE", "AVENUE", junk_bins$street)
-junk_bins$street = gsub("\\AVEN UE", "AVENUE", junk_bins$street)
-junk_bins$street = gsub("\\AVENU E", "AVENUE", junk_bins$street)
-junk_bins$street = gsub("\\PARKWA Y", "PARKWAY", junk_bins$street)
-junk_bins$street = gsub("\\PARKW AY", "PARKWAY", junk_bins$street)
-junk_bins$street = gsub("\\PARK WAY", "PARKWAY", junk_bins$street)
-junk_bins$street = gsub("\\PAR KWAY", "PARKWAY", junk_bins$street)
-junk_bins$street = gsub("\\PA RKWAY", "PARKWAY", junk_bins$street)
-junk_bins$street = gsub("\\P ARKWAY", "PARKWAY", junk_bins$street)
-junk_bins$street = gsub("\\PKWAY", "PARKWAY", junk_bins$street)
-junk_bins$street = gsub("\\PKWY", "PARKWAY", junk_bins$street)
-junk_bins$street = gsub("\\R OAD", "ROAD", junk_bins$street)
-junk_bins$street = gsub("\\RO AD", "ROAD", junk_bins$street)
-junk_bins$street = gsub("\\ROA D", "ROAD", junk_bins$street)
-junk_bins$street = gsub("\\ RD", "ROAD", junk_bins$street)
-junk_bins$street = gsub("\\BBOULEVARD", "BOULEVARD", junk_bins$street)
+#cleaning specific data issues 
+#remomving excess address description
+junk_bins$street <- gsub(
+  "\\s+(NO\\.|APT\\.?|APARTMENT|UNIT|BLDG|BUILDING|FL[R]?|FLOOR|RM|ROOM|(1ST|2ND|3RD|FIRST|SECOND|THIRD)\\s+FL[R]?)\\b.*",
+  "", junk_bins$street, perl = TRUE
+)
+junk_bins$street <- gsub(
+  "\\s*(ENTIRE|CLOSET|GROUND|BASEMENT|DOOR|CONSISTING|LIVING|ALL ROOMS|ALL COMMON AREAS|FRONT ENTRANCE|ROOMS|PARKINGSPACE|LOWER LEVEL|A PT).*",
+  "", junk_bins$street, perl = TRUE
+)
+
+junk_bins$street <- gsub(
+  "\\s*(COMMERCIAL SPACE|TOP F|ON THE|STUDIO|LARGE BEDROOM|ALL SPACE|GRDFLR|REAR|LEFT|BEDROOM|ALL RMS|MAKE RIGHT|THE PREMISES|BSMT|RETAIL).*",
+  "", junk_bins$street, perl = TRUE
+)
+
+junk_bins$street <- gsub(
+  "\\s*(GARAGE|TOP F|ON THE|STUDIO|UPPER|1ST FLR|SECOND FLOOR|ONE FAMILY|2ND FLOOR|TOP LEVEL|ATTIC|2ND FLRAPT|WHOLE HOUSE|3RD FLOOR|CELLAR).*",
+  "", junk_bins$street, perl = TRUE
+)
+
+#removing commas, parentheses, AKAs, and any info following them
+junk_bins$street <- gsub("\\(.*", "", junk_bins$street, perl = TRUE)
+junk_bins$street <- gsub(",.*",   "", junk_bins$street, perl = TRUE)
+junk_bins$street <- gsub("\\s*A ?K ?A.*", "", junk_bins$street, perl = TRUE)
+
+#replace split words and remove abbreviations
+word_fixes <- c(
+  "0CEAN" = "OCEAN",
+  "C OURT|CO URT|COU RT|COUR T" = "COURT",
+  "SEC OND" = "SECOND",  
+  "S TREET|ST REET|STR EET|STRE ET|STREE T|ST RT" = "STREET",
+  "P LACE|PL ACE|PLA CE|PLAC E"             = "PLACE",
+  "W EST|WE ST|WES T"                        = "WEST",
+  "E AST| EAS T" = "EAST",
+  "S OUTH|SO UTH|SOU TH|SOUT H"             = "SOUTH",
+  "STJOHNS" = "ST JOHNS",
+  "EMOSHOLU" = "EAST MOSHOLU",
+  "A VENUE|AV ENUE|AVE NUE|AVEN UE|AVENU E|AVEU E" = "AVENUE",
+  "R OAD|RO AD|ROA D"                        = "ROAD",
+  "B OULEVARD|BO ULEVARD|BOU LEVARD|BOUL EVARD|BOULE VARD|BOULEV ARD|BOULEVA RD|BOULEVAR D" = "BOULEVARD",
+  "P ARKWAY|PA RKWAY|PAR KWAY|PARK WAY|PARKW AY|PARKWA Y" = "PARKWAY",
+  "T ERRACE|TE RRAACE|TER RACE|TERR ACE|TERRA CE|TERRAC E| TER R" = "TERRACE",
+  "HUTCH RV" = "HUTCHINSON RIVER",
+  "C HANNEL|CH ANNEL|CHA NNEL|CHAN NEL|CHANN EL|CHANNE L" = "CHANNEL",
+  "C RESCENT|CR ESCENT|CRE SCENT|CRES CENT|CRESC ENT|CRESCE NT|CRESCEN T" = "CRESCENT",
+  "PENNSYLVAN IA" = "PENNSYLVANIA",
+  "P OLITE|PO LITE|POL ITE|POLI TE|POLIT E" = "POLITE",
+  "S QUARE| SQ UARE|SQU ARE|SQUA RE|SQUAR E" = "SQUARE",
+  "C ONCOURSE|CO NCOURSE|CON COURSE|CONC OURSE|CONCO URSE|CONCOU RSE|CONCOUR SE|CONCOURS E" = "CONCOURSE",
+  "P ROMENADE|PR OMENADE|PRO MENADE|PROM ENADE|PROME NADE|PROMEN ADE|PROMENA DE|PROMENAD E" = "PROMENADE",
+  "L AFAYETTE|LA FAYETTE|LAF AYETTE|LAFA YETTE|LAFAY ETTE|LAFAYE TTE|LAFAYET TE|LAFATETT E" = "LAFAYETTE",
+  "K INGSBRIGE|KI NGSBRIDGE|KIN GSBRIDGE|KING SBRIDGE|KINGS BRIDGE|KINGSB RIDGE|KINGSBR IDGE|KINGSBRI DGE|KINGSBRID GE|KINGSBRIDG E" = "KINGSBRIDGE",
+  "CHESTNU T" = "CHESTNUT",
+  "LAFAYETT E" = "LAFAYETTE",
+  
+  # Abbreviations → full word
+  "\\bBLVD\\b|\\bBL VD\\b|\\bB LVD\\b"  = "BOULEVARD",
+  "\\bPKWAY\\b|\\bPKWY\\b"  = "PARKWAY",
+  
+  # Specific street name typos
+  "\\bBOYL AND\\b|\\bBBOYLAND\\b" = "BOYLAND",
+  "\\bPO WELL\\b"                  = "POWELL",
+  "\\bBBOULEVARD\\b"               = "BOULEVARD"
+)
+
+junk_bins$street <- str_replace_all(junk_bins$street, word_fixes)
+
+#additional whitespace cleanup
+junk_bins$street <- trimws(gsub("\\s+", " ", junk_bins$street, perl = TRUE))
+
+junk_bins$street <- gsub("KINGSBRIDGETERRACEACE", "KINGSBRIDGE TERRACE", junk_bins$street, perl = TRUE)
+junk_bins$street <- gsub("KINGSBRIDGETERRACE", "KINGSBRIDGE TERRACE", junk_bins$street, perl = TRUE)
 
 #writing datasets for geocoding export 
-#write.csv(junk_bins, "junk_bins_cleaned.csv")
-#write.csv(junk_bins, "junk_bins_cleaned_v2.csv")
+write.csv(junk_bins, "junk_bins_cleaned.csv", row.names = F)
 
-
-#write.csv(junk_bins, "faulty_bins_19feb2026.csv")
-write.csv(not_junk_bins, paste0(data.path, "evic_bins_16feb2026.csv"), row.names = F)
-
-#BRINGING BACK CORRECTED BINS FOR DATA AGGREGATION
+#BRINGING BACK CORRECTED BINS FOR DATA AGGREGATION#############################
 
 geocoding_folder <- "_"
 
@@ -234,6 +209,6 @@ evic_output <- evictions_combined %>%
 
 #exporting summary tables
 #write.csv(evic_output, 'evic_by_year_19feb2026.csv')
-write.csv(evic_output, paste0(data.path,'evic_by_year_20feb2026.csv'), row.names = F)
+#write.csv(evic_output, paste0(data.path,'evic_by_year_20feb2026.csv'), row.names = F)
 
 
