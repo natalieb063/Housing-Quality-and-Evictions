@@ -43,25 +43,15 @@ not_weird_bins_hpdjuris <- hpd_juris %>%
 
 geocoded_path <-
 
-#hpd_juris_bins <- fread(paste0(geocoded_path, 'hpd_juris_BIN_SUCCESS.csv')) %>% 
-#  select(-c(V1:V4, V7:V8, V11:V12, V14:V17))
-#hpd_juris_add1 <- fread(paste0(geocoded_path, 'hpd_juris_BIN_attempt2_add_SUCCESS_E.csv')) %>%
-#  select(-c(V1:V4, V7:V8, V11:V12, V14:V17))
 hpd_juris_add2 <- fread(paste0(geocoded_path, 'hpd_juris_add_SUCCESS_E.csv')) %>%
   select(-c(V1:V4, V7:V8, V11:V12, V14:V17))
 
 new_names_hpd_juris_bins <- c("borough", "house_number", "street", "zipcode",
                          "BIN_old", "BIN_new", "x", "y")
 
-#colnames(hpd_juris_bins) <- new_names_hpd_juris_bins
-#colnames(hpd_juris_add1) <- new_names_hpd_juris_bins
 colnames(hpd_juris_add2) <- new_names_hpd_juris_bins
 
-#hpd_juris_bins <- hpd_juris_bins %>% 
-#  mutate(x = as.integer(x),
-#         y = as.integer(y))
-
-junkbins=c(1000000,2000000,3000000,300000,4000000,5000000,0) #NB: added in 0 and 300000
+junkbins=c(1000000,2000000,3000000,300000,4000000,5000000,0)
 
 hpd_juris_updated=left_join(hpd_juris,hpd_juris_add2, by = join_by(HouseNumber == house_number,
                                                                    StreetName == street,
@@ -71,20 +61,6 @@ hpd_juris_updated=left_join(hpd_juris,hpd_juris_add2, by = join_by(HouseNumber =
   select(-c(x, y)) %>%
   mutate(BIN=ifelse(!is.na(BIN_new), BIN_new, BIN)) %>%
   filter(BIN %in% junkbins==F & !is.na(BIN))
-
-#sizes <- hpd_juris %>% select(BIN, LegalClassA) #bringing in units per building
-
-#hpd_juris_full <- bind_rows(hpd_juris_bins, hpd_juris_add1, hpd_juris_add2) %>% 
-#  distinct() %>%
-#  mutate(full_address = case_when(house_number == 0 ~ paste0(street),
-#                                  house_number != 0 ~ paste0(house_number, " ", street))) %>%
-#  left_join(sizes, by = join_by(BIN_new == BIN)) %>%
-#  rename(BIN = BIN_new,
-#         n_units = LegalClassA)
-
-#hpd_juris_output <- hpd_juris_full %>%
-#  select(BIN, full_address, x, y, n_units) %>%
-#  distinct(BIN, .keep_all = TRUE)
 
 hpd_juris_output <- hpd_juris_updated %>%
   mutate(full_address = case_when(HouseNumber == 0 ~ paste0(StreetName),
