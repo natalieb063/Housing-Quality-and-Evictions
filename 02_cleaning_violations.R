@@ -77,76 +77,15 @@ viol_updated <- left_join(violations_combined, violations_by_add %>% select(BIN_
                        
 viol_year <- viol_updated %>%
   group_by(BIN, Class, viol_year) %>% 
-  summarise(n=n())
-
-for(i in 2019:2022){
-assign(paste0('viol',i), 
-       dcast(viol_year %>% filter(viol_year==i), 
-             BIN ~ paste0(Class,'_',i), value.var = 'n', fill=0))
-       
-}
-
-viol2019$viol_2019=viol2019$A_2019+viol2019$B_2019+viol2019$C_2019+viol2019$I_2019
-viol2020$viol_2020=viol2020$A_2020+viol2020$B_2020+viol2020$C_2020+viol2020$I_2020
-viol2021$viol_2021=viol2021$A_2021+viol2021$B_2021+viol2021$C_2021+viol2021$I_2021
-viol2022$viol_2022=viol2022$A_2022+viol2022$B_2022+viol2022$C_2022+viol2022$I_2022
-
-#join all summary data by BIN
-viol_all=full_join(viol2019, viol2020) %>%
-  full_join(.,viol2021)%>%
-  full_join(.,viol2022)
-  left_join(viol_addresses)
-
+  summarise(n=n()) %>%
+  pivot_wider(names_from = Class,
+              values_from = n)
 
 #replace all NA's with 0
-viol_all[is.na(viol_all)]=0
-viol_all$total_viol=viol_all$viol_2023+viol_all$viol_2024+viol_all$viol_2025
+viol_year[is.na(viol_year)]=0
 
-write.csv(viol_all, paste0(output.path, 'Viol_by_Year.csv'), row.names=F)
+viol_year <- viol_year %>%
+  mutate(viol_total = sum(A,B,C,I))
 
-# 
-# viol_by_class <- violations_full  %>%
-#   group_by(BIN, violation_class) %>%
-#   summarise(n = n()) %>%
-#   pivot_wider(names_from = violation_class, values_from = n) %>%
-#   mutate(across(c(A:B), ~ replace_na(.x, 0)))
-# 
-# #checking distinctness
-# viol_by_year %>%
-#   group_by(BIN) %>%
-#   summarise(n = n()) %>%
-#   arrange(desc(n))
-# 
-# viol_adds <- violations_full  %>%
-#   mutate(full_address = case_when(house_number == 0 ~ paste0(street),
-#                                   house_number != 0 ~ paste0(house_number, " ", street))) %>%
-#   select(BIN, full_address,x ,y) %>%
-#   distinct()
-# 
-# viol_by_BIN <- viol_by_year %>% left_join(viol_by_class, by = "BIN") %>%
-#   rename(total_A = A,
-#          total_B = B,
-#          total_C = C,
-#          total_I = I) %>%
-#   left_join(viol_adds, by = "BIN") %>%
-#   distinct(BIN, .keep_all = TRUE) %>%
-#   select(BIN, full_address, x, y, n_viol, viol_2023, viol_2024, viol_2025, 
-#          total_A, total_B, total_C, total_I)
-#   
-# 
-# viol_by_BIN %>%
-#   group_by(BIN) %>%
-#   summarise(n = n()) %>%
-#   arrange(desc(n))
-# 
-
-#write.csv(viol_by_year, "viol_by_year.csv")
-#write.csv(viol_by_class, "viol_by_class.csv")
-#write.csv(viol_by_BIN, "viol_by_bin.csv")
-
-#weird_bins_return <- viol_by_year %>% filter(BIN == 3000000 | BIN == 1000000 | BIN == 2000000 | BIN == 4000000 | BIN == 5000000)
-#no weird bins!
-
-#write.csv(evic_output, 'viol_by_year.csv')
-
+write.csv(viol_year, 'viol_by_year_6mar2026', row.names=F)
 
