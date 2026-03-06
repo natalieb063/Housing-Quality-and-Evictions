@@ -130,11 +130,11 @@ word_fixes <- c(
   "CHESTNU T" = "CHESTNUT",
   "LAFAYETT E" = "LAFAYETTE",
   
-  # Abbreviations → full word
+  #abbreviations → full word
   "\\bBLVD\\b|\\bBL VD\\b|\\bB LVD\\b"  = "BOULEVARD",
   "\\bPKWAY\\b|\\bPKWY\\b"  = "PARKWAY",
   
-  # Specific street name typos
+  #specific street name typos
   "\\bBOYL AND\\b|\\bBBOYLAND\\b" = "BOYLAND",
   "\\bPO WELL\\b"                  = "POWELL",
   "\\bBBOULEVARD\\b"               = "BOULEVARD"
@@ -153,62 +153,50 @@ write.csv(junk_bins, "junk_bins_cleaned.csv", row.names = F)
 
 #BRINGING BACK CORRECTED BINS FOR DATA AGGREGATION#############################
 
-geocoding_folder <- "_"
+geocoding_folder <- "/Users/nataliebrown/Desktop/housing_quality_nyc/outputs/geocoded/"
 
-evictions_by_add_attempt2 <- fread(paste0(geocoding_folder, 'junk_bins_take2_SUCCESS.csv')) %>%
-  select(-c(V1:V2, V5, V10:V16, V18:V20))
+evictions_by_add <- fread(paste0(geocoding_folder, 'junk_bins_cleaned_NB_SUCCESS.csv')) %>%
+  select(-c(V1, V4, V7:V13, V15:V17))
 
-new_names_by_add_attempt2 <- c("court_index", "docket_number", "apt_number",
-                          "evic_date", "borough", "zipcode", "BIN_old",
-                          "evic_year", "house_number","street", "BIN_new","x", "y")
+new_names_by_add<- c("court_index", "docket_number", "borough",
+                           "zipcode", "BIN_old", "evic_year", "house_number","street", "BIN_new")
 
-colnames(evictions_by_add_attempt2) <- new_names_by_add_attempt2 
+colnames(evictions_by_add) <- new_names_by_add
 
 #standardizing datasets for combination
 
 evictions_ungeocoded <- not_junk_bins %>%
   rename(court_index = Court.Index.Number,
          docket_nuber = Docket.Number.,
-         full_address = Eviction.Address,
-         apt_number = Eviction.Apartment.Number,
          borough = BOROUGH,
          zipcode = Eviction.Postcode) %>% 
-  select(BIN, full_address, borough, zipcode, evic_year, evic_date)
+  separate(col = Eviction.Address,
+           into = c("house_number", "street"),
+           sep = " ",
+           extra = "merge") %>%
+  select(BIN, house_number, street, borough, zipcode, evic_year)
 
-evic_geocoded_by_add <- evictions_by_add_attempt2 %>%
-  mutate(full_address = paste0(house_number, " ", street), 
-         BIN_new = as.numeric(BIN_new)) %>%
-  filter(!is.na(BIN_new)) %>%
-  select(BIN_new, full_address, borough, zipcode, evic_year, evic_date) %>%
+evic_geocoded_by_add <- evictions_by_add %>%
+  mutate(BIN_new = as.numeric(BIN_new)) %>%
+  filter(!is.na(BIN_new)) %>% #removes 11 
+  select(BIN_new, house_number, street, borough, zipcode, evic_year) %>%
   rename(BIN = BIN_new) %>%
   mutate(BIN = as.integer(BIN),
-         evic_date = as.Date(evic_date, "%m/%d/%Y"))
+         house_number = as.character(house_number))
 
 #combining evictions with and without BINs
-evictions_combined <- bind_rows(evictions_ungeocoded, evic_geocoded_by_add)
+evictions_combined <- bind_rows(evictions_ungeocoded, evic_geocoded_by_add) %>%
+  mutate(row_id = row_number())
 
 evictions_combined %>% group_by(BIN) %>% summarise(n = n()) %>% arrange(desc(n))
 
 #creating summary statistics
-evic_by_year <- 
-  evictions_combined  %>%
+evic_by_year <- evictions_combined  %>%
   group_by(BIN, evic_year) %>%
-  summarise(n = n()) %>%
-  pivot_wider(names_from = evic_year, values_from = n) %>%
-  rename(evic_2023 = `2023`,
-         evic_2024 = `2024`,
-         evic_2025 = `2025`) %>%
-  mutate(across(c(evic_2025:evic_2024), ~ replace_na(.x, 0)),
-         n_evic = sum(evic_2023, evic_2024, evic_2025)) %>%
-  select(BIN, n_evic, evic_2023, evic_2024, evic_2025)
-
-evic_output <- evictions_combined %>% 
-  select(BIN, full_address, borough, zipcode) %>%
-  left_join(evic_by_year, by = "BIN") %>%
-  distinct(BIN, .keep_all = TRUE)
+  summarise(Evictions = n()) %>%
+  rename(Year = evic_year)
 
 #exporting summary tables
-#write.csv(evic_output, 'evic_by_year_19feb2026.csv')
-#write.csv(evic_output, paste0(data.path,'evic_by_year_20feb2026.csv'), row.names = F)
+write.csv(evic_by_year, 'evic_by_year_6mar2026.csv')
 
 
