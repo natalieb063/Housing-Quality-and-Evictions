@@ -6,6 +6,7 @@
 ###############################################################################
 
 rm(list = ls())
+options(scipen=999)
 
 #LIBRARIES######################################################################
 
@@ -19,195 +20,81 @@ library(reshape2)
 
 #PATHS & VARS###################################################################
 
-violations_path <- 
-output.path <- 
+violations_path <- '/Users/nataliebrown/Desktop/housing_quality_nyc/violations/'
+
 #DATA##########################################################################
 
-violations <- fread(paste0(violations_path, 'Housing_Maintenance_Code_Violations_20260108.csv')) %>%
-  mutate(inspection_date = mdy(InspectionDate)) %>%
-  filter(year(inspection_date) != 2022)
+violations_2019 <- read.csv(paste0(violations_path, 'violations_2019.csv'))
+violations_2020 <- read.csv(paste0(violations_path, 'violations_2020.csv'))
+violations_2021 <- read.csv(paste0(violations_path, 'violations_2021.csv'))
+violations_2022 <- read.csv(paste0(violations_path, 'violations_2022_premoratorium.csv'))
 
-violations.distinct=violations %>% distinct()
+list_of_violations_dfs <- list(violations_2019 = violations_2019,
+                               violations_2020 = violations_2020,
+                               violations_2021 = violations_2021,
+                               violations_2022 = violations_2022)
 
-violations.distinct=violations %>% distinct(ViolationID)
+cols_to_keep <- c("ViolationID","Borough", "Class", "HouseNumber", "StreetName", "Postcode",
+                  "InspectionDate", "BIN")
 
-#skim(violations)
+cleaned_violations_dfs <- lapply(list_of_violations_dfs, function(df) {
+  df %>% select(all_of(cols_to_keep))
+})
 
-#REMOVE 2022 - JS note:  you dont' remove 2022 here, does that happen later or did that already happen?
-#NB:on line 30
-violation_bins <- violations %>%
+list2env(cleaned_violations_dfs, envir = .GlobalEnv)
+
+violations_combined <- bind_rows(violations_2019, violations_2020, violations_2021, violations_2022) %>%
+  mutate(viol_date = as.Date(InspectionDate, "%m/%d/%Y"),
+         viol_year = year(viol_date))
+
+violation_bins <- violations_combined %>% #assessing junk bins
   group_by(BIN) %>%
   summarise(n = n())
 
-weird_bins_viol <- violations %>%
-  filter(BIN == 1000000 | BIN == 2000000| BIN == 3000000 |BIN == 4000000 |BIN == 5000000 | is.na(BIN))
+junk_bin <- c(1000000, 2000000, 3000000, 4000000, 5000000)
 
-not_weird_bins_viol <- violations %>%
-  filter(BIN != 1000000 & BIN != 2000000 & BIN != 3000000 & BIN != 4000000 & BIN != 5000000 & !is.na(BIN)) %>%
-  select(-c(NOVDescription))
+junk_bins <- violations_combined %>%
+  filter(BIN %in% junk_bin | is.na(BIN))
 
-#write.csv(weird_bins_viol, "viol_faulty_bins_16feb2026.csv")
-#write.csv(not_weird_bins_viol, "viol_bins_16feb2026.csv")
-
-#seems like this code is not needed anymore? from lines 49-56?
-weird_bins_distinct <- weird_bins_viol %>%
-  distinct(HouseNumber, StreetName, Borough)
-
-violations_cleaned <- violations %>%
-  mutate(inspection_date = mdy(InspectionDate))
-
-is_unique_key <- n_distinct(violations_cleaned$ViolationID) == nrow(violations_cleaned)
-print(is_unique_key) #true
-
-#ANALYSES #######################################################################
-#this is just get descriptives of the original dataset, right?  
-#NB: yes
-
-# #violations by borough
-# 
-# #1 = MN, #2 = BX, #3 = BK, #4 = QN, #5 = SI
-# violations_cleaned %>%
-#   group_by(BoroID) %>%
-#   summarise(total_by_borough = n()) %>%
-#   mutate(percentage_share = (total_by_borough / sum(total_by_borough)) * 100)
-# 
-# #violations by year
-# #lowest number in 2022, could be worth omitting? 
-# 
-# violations_cleaned %>%
-#   group_by(year(inspection_date)) %>%
-#   summarise(total_by_year = n()) %>%
-#   mutate(percentage_share = (total_by_year / sum(total_by_year)) * 100)
-# 
-# #violations by borough and year
-# 
-# violations_cleaned %>%
-#   group_by(BoroID, year(inspection_date)) %>%
-#   summarise(total_by_year_and_borough = n()) %>%
-#   ungroup() %>%
-#   group_by(`year(inspection_date)`) %>%
-#   mutate(percentage_share_by_year = (total_by_year_and_borough / sum(total_by_year_and_borough)) * 100)
-# 
-
-#write_csv(violations_cleaned, "violations_13Jan2026.csv")
+write.csv(junk_bins, "viol_junk_bins_6mar2026.csv")
 
 ####BRINGING BACK GEOCODED DATA         ########################################
 
-geocoded_path <- 
+geocoding_folder <- "/Users/nataliebrown/Desktop/housing_quality_nyc/outputs/geocoded/"
 
-#note - commented out pulling back in the geocoded data because you're going to merge with 
-#the violations_bins to the weird bins that were geocoded to obtain a real bin
+violations_by_add <- fread(paste0(geocoding_folder, 'viol_junk_bins_SUCCESS_E.csv')) %>%
+  select(-c(V1:V2, V10))
 
-# viol_bins <- fread(paste0(geocoded_path, 'viol_bins_SUCCESS.csv')) %>% 
-#   select(-c(V1:V2, V4:V6, V9:V10, V12, V15:V17, V20:V22, V20:V39, V41:V43))
-# viol_add1 <- fread(paste0(geocoded_path, 'viol_bins_attempt2_add_SUCCESS.csv')) %>%
-#   select(-c(V1:V2, V4:V6, V9:V10, V12, V14:V17, V19:V22, V20:V39, V41:V43))
-viol_add2 <- fread(paste0(geocoded_path, 'viol_faulty_bins_add_SUCCESS_E.csv')) %>%
-  select(-c(V1:V2, V4:V6, V9:V10, V12, V14:V17, V20:V40, V42:V44))
+new_names_by_add<- c("ViolationID", "borough", "house_number","street", "zipcode",
+                     "inspection_date", "BIN_old", "viol_year", "BIN_new")
 
-# new_names_viol_bins <- c("violation_ID", "borough", "house_number", "street", "zipcode",
-#                          "apt_number", "violation_class", "inspection_date", 
-#                          "BIN", "x", "y")
-# 
-# colnames(viol_bins) <- new_names_viol_bins
-# 
-# new_names_viol_add1 <- c("violation_ID", "borough", "house_number", "street", "zipcode",
-#                           "violation_class", "BIN_new", "BIN_old", 
-#                          "x", "y")
-# 
-# colnames(viol_add1) <- new_names_viol_add1
+colnames(violations_by_add) <- new_names_by_add
 
-new_names_viol_add2 <- c("ViolationID", "borough", "house_number", "street", "zipcode",
-                         "violation_class", "inspection_date", "BIN_old", "BIN_new",
-                         "x", "y")
-
-colnames(viol_add2) <- new_names_viol_add2
-
-junkbins=c(1000000,2000000,3000000,4000000,5000000)
-
-viol_updated=left_join(violations,viol_add2 %>% select(BIN_new, ViolationID)) %>%
+#matching back to original violations and replacing junk bins with geocoded counterparts
+viol_updated <- left_join(violations_combined, violations_by_add %>% select(BIN_new, ViolationID)) %>%
   mutate(BIN=ifelse(!is.na(BIN_new), BIN_new, BIN)) %>%
-  filter(BIN %in% junkbins==F & !is.na(BIN))
+  filter(!(BIN %in% junk_bin) & !is.na(BIN))
                        
-                       
-                       #commented this out because the process is a bit different now that we are merging
-                       #not weird bins to newly geocoded data, then summarizing
-                       #getting all data into same row and column format
-
-#first adding dates back into _add1
-# 
-# violation_dates <- violations %>% 
-#   select(ViolationID, InspectionDate)
-# 
-# viol_add1_uniform <- viol_add1 %>%
-#   left_join(violation_dates, by = join_by(violation_ID == ViolationID)) %>%
-#   mutate(inspection_date = mdy(InspectionDate)) %>%
-#   select(violation_ID, borough, house_number, street, zipcode, inspection_date, 
-#         violation_class, BIN_new, x, y) %>%
-#   rename(BIN = BIN_new)
-# 
-# viol_add2_uniform <- viol_add2 %>%
-#   mutate(inspection_date = mdy(inspection_date)) %>%
-#   select(violation_ID, borough, house_number, street, zipcode, inspection_date, 
-#          violation_class, BIN_new, x, y) %>%
-#   rename(BIN = BIN_new)
-# 
-# viol_bins_uniform <- viol_bins %>%
-#   mutate(inspection_date = mdy(inspection_date)) %>%
-#   select(violation_ID, borough, house_number, street, zipcode, inspection_date, 
-#          violation_class, BIN, x, y) %>%
-#   mutate(x = as.integer(x),
-#          y = as.integer(y))
-# 
-# 
-# #binding rows into one dataset
-# violations_full <- bind_rows(viol_bins_uniform, viol_add1_uniform, 
-#                             viol_add2_uniform) 
-# 
-# violations_full %>%
-#   group_by(BIN) %>%
-#   summarise(n = n()) %>%
-#   arrange(desc(n))
-# #junk bins no longer in the top!
-# 
-# 
-# viol_by_year <- viol_updated  %>%
-#   mutate(inspec_year = year(inspection_date)) %>%
-#   group_by(BIN, inspec_year) %>%
-#   summarise(n = n()) %>%
-#   filter(inspec_year != 2022) %>%
-#   pivot_wider(names_from = inspec_year, values_from = n) %>%
-#   rename(viol_2023 = `2023`,
-#          viol_2024 = `2024`,
-#          viol_2025 = `2025`) %>%
-#   mutate(across(c(viol_2025:viol_2024), ~ replace_na(.x, 0)),
-#          n_viol = sum(viol_2023, viol_2024, viol_2025)) %>%
-#   select(BIN, n_viol, viol_2023, viol_2024, viol_2025)
-
-viol_class_year=
-  viol_updated %>%
-  mutate(inspec_year = year(inspection_date)) %>%
-  group_by(BIN, Class, inspec_year) %>% 
+viol_year <- viol_updated %>%
+  group_by(BIN, Class, viol_year) %>% 
   summarise(n=n())
 
-for(i in 2023:2025){
+for(i in 2019:2022){
 assign(paste0('viol',i), 
-       dcast(viol_class_year %>% filter(inspec_year==i), 
+       dcast(viol_year %>% filter(viol_year==i), 
              BIN ~ paste0(Class,'_',i), value.var = 'n', fill=0))
        
 }
 
-viol2023$viol_2023=viol2023$A_2023+viol2023$B_2023+viol2023$C_2023+viol2023$I_2023
-viol2024$viol_2024=viol2024$A_2024+viol2024$B_2024+viol2024$C_2024+viol2024$I_2024
-viol2025$viol_2025=viol2025$A_2025+viol2025$B_2025+viol2025$C_2025+viol2025$I_2025
-
-viol_addresses=viol_updated %>% 
-  distinct(BIN, .keep_all=T) %>%
-  select(BIN, HouseNumber, StreetName, Borough, Postcode)
+viol2019$viol_2019=viol2019$A_2019+viol2019$B_2019+viol2019$C_2019+viol2019$I_2019
+viol2020$viol_2020=viol2020$A_2020+viol2020$B_2020+viol2020$C_2020+viol2020$I_2020
+viol2021$viol_2021=viol2021$A_2021+viol2021$B_2021+viol2021$C_2021+viol2021$I_2021
+viol2022$viol_2022=viol2022$A_2022+viol2022$B_2022+viol2022$C_2022+viol2022$I_2022
 
 #join all summary data by BIN
-viol_all=full_join(viol2023, viol2024) %>%
-  full_join(.,viol2025)%>%
+viol_all=full_join(viol2019, viol2020) %>%
+  full_join(.,viol2021)%>%
+  full_join(.,viol2022)
   left_join(viol_addresses)
 
 
