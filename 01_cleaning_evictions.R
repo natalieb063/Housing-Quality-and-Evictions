@@ -23,15 +23,17 @@ export_path <- "/Users/nataliebrown/Desktop/housing_quality_nyc/outputs/to_be_ge
 #DATA##########################################################################
 
 #import
+evictions_2017_2018 <- read.csv(paste0(evictions_path, 'evictions_2017_2019.csv')) %>% #remove all 2019s
+  mutate(evic_date = as.Date(Executed.Date, "%m/%d/%Y"),
+         evic_year = year(evic_date)) %>%
+  filter(evic_year != 2019)
+
 evictions_2019_2021 <- read.csv(paste0(evictions_path, 'evictions_2019_2021.csv'))
 evictions_2022_2025 <- read.csv(paste0(evictions_path, 'evictions_2022_2025.csv'))
 
 #bind rows 
-
-rm(evictions)
-evictions_raw <- bind_rows(evictions_2019_2021, evictions_2022_2025)
-
-evictions_distinct <- evictions_raw %>% distinct() #there are __ duplicates
+evictions_raw <- bind_rows(evictions_2017_2018, evictions_2019_2021, evictions_2022_2025) %>% distinct()
+#115962 evictions in raw data
 
 #DATA CLEANING#################################################################
 #removing commercial evictions and names for Marshals
@@ -95,6 +97,11 @@ junk_bins$street <- gsub(
   "", junk_bins$street, perl = TRUE
 )
 
+junk_bins$street <- gsub(
+  "\\s*(DUPLEX|MAIN ENTRANCE|2ND FLAPT|DOWNSTAIRS| WALK IN|LOWER|BSMT).*",
+  "", junk_bins$street, perl = TRUE
+)
+
 #removing commas, parentheses, AKAs, and any info following them
 junk_bins$street <- gsub("\\(.*", "", junk_bins$street, perl = TRUE)
 junk_bins$street <- gsub(",.*",   "", junk_bins$street, perl = TRUE)
@@ -110,7 +117,9 @@ word_fixes <- c(
   "W EST|WE ST|WES T"                        = "WEST",
   "E AST| EAS T" = "EAST",
   "S OUTH|SO UTH|SOU TH|SOUT H"             = "SOUTH",
+  "N ORTH| NO RTH| NOR TH| NORT H" = "NORTH",
   "STJOHNS" = "ST JOHNS",
+  "L EWIS| LE WIS| LEW IS| LEWI S" = "LEWIS",
   "EMOSHOLU" = "EAST MOSHOLU",
   "A VENUE|AV ENUE|AVE NUE|AVEN UE|AVENU E|AVEU E" = "AVENUE",
   "R OAD|RO AD|ROA D"                        = "ROAD",
@@ -129,6 +138,7 @@ word_fixes <- c(
   "K INGSBRIGE|KI NGSBRIDGE|KIN GSBRIDGE|KING SBRIDGE|KINGS BRIDGE|KINGSB RIDGE|KINGSBR IDGE|KINGSBRI DGE|KINGSBRID GE|KINGSBRIDG E" = "KINGSBRIDGE",
   "CHESTNU T" = "CHESTNUT",
   "LAFAYETT E" = "LAFAYETTE",
+  "E XPRESSWAY|EX PRESSWAY|EXP RESSWAY|EXPR ESSWAY|EXPRES SWAY|EXPRESS WAY|EXPRESSW AY|EXPRESSWA Y"  = "EXPRESSWAY",
   
   #abbreviations → full word
   "\\bBLVD\\b|\\bBL VD\\b|\\bB LVD\\b"  = "BOULEVARD",
@@ -155,11 +165,12 @@ write.csv(junk_bins, "junk_bins_cleaned.csv", row.names = F)
 
 geocoding_folder <- "/Users/nataliebrown/Desktop/housing_quality_nyc/outputs/geocoded/"
 
-evictions_by_add <- fread(paste0(geocoding_folder, 'junk_bins_cleaned_NB_SUCCESS.csv')) %>%
-  select(-c(V1, V4, V7:V13, V15:V17))
+evictions_by_add <- fread(paste0(geocoding_folder, 'junk_bins_cleaned_V2_SUCCESS.csv')) %>%
+  select(-c(V1, V4:V5, V9:V15, V17:V19))
 
-new_names_by_add<- c("court_index", "docket_number", "borough",
-                           "zipcode", "BIN_old", "evic_year", "house_number","street", "BIN_new")
+new_names_by_add<- c("court_index", "docket_number", "eviction_date", "borough",
+                    "zipcode", "BIN_old", "evic_year", "house_number", 
+                     "street", "BIN_new")
 
 colnames(evictions_by_add) <- new_names_by_add
 
