@@ -155,6 +155,42 @@ panel <- panel %>%
     building_age   = 2017 - `Construction Year`
   )
 
+#QA############################################################################
+
+panel %>%
+  count(BIN) %>%
+  summarise(
+    min_years = min(n),
+    max_years = max(n)
+  )
+
+panel %>%
+  group_by(BIN) %>%
+  summarise(treatment_values = n_distinct(treated)) %>%
+  filter(treatment_values > 1)
+
+panel %>%
+  filter(Year %in% c(2017, 2018, 2019)) %>%
+  group_by(treated) %>%
+  summarise(mean_evictions = mean(Evictions, na.rm = TRUE))
+
+panel %>%
+  filter(Year >= 2022) %>%
+  group_by(treated) %>%
+  summarise(mean_evictions = mean(Evictions, na.rm = TRUE))
+
+panel %>%
+  filter(Year %in% c(2017, 2018, 2019)) %>%
+  group_by(Year, treated) %>%
+  summarise(mean_evictions = mean(Evictions, na.rm = TRUE),
+            .groups = "drop") %>%
+  pivot_wider(names_from = treated, 
+              values_from = mean_evictions,
+              names_prefix = "treated_") %>%
+  mutate(difference = treated_1 - treated_0)
+
+
+
 #FOR LATER#####################################################################
 #charges_invoices_qa=
 #  charges_invoices %>%
