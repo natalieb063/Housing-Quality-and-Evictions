@@ -24,8 +24,8 @@ output.path <- '/Users/nataliebrown/Desktop/housing_quality_nyc/outputs/final_df
 
 #BRINGING DATA IN###############################################################
 
-violations <- read_csv(paste0(data.path, 'viol_by_year_6mar2026.csv')) %>% rename(Year = viol_year)
-evictions <- read_csv(paste0(data.path, 'evic_by_year_6mar2026.csv')) %>% select(-1)
+violations <- read_csv(paste0(data.path, 'viol_by_year_13mar2026.csv')) %>% rename(Year = viol_year)
+evictions <- read_csv(paste0(data.path, 'evic_by_year_15mar2026.csv')) %>% select(-1)
 hpdjuris <- read_csv(paste0(data.path, 'hpdjuris_by_BIN.csv'))
 buildings <- read_csv(paste0(data.path, 'BUILDING_20260306.csv')) %>% select(BIN, 'Construction Year')
 
@@ -34,7 +34,7 @@ buildings <- read_csv(paste0(data.path, 'BUILDING_20260306.csv')) %>% select(BIN
 #MERGING########################################################################
 
 #merging in evictions
-master_diff_n_diff <- full_join(violations, evictions, by = join_by(BIN, Year))
+master_diff_n_diff <- left_join(violations, evictions, by = join_by(BIN, Year))
 sum(is.na(master_diff_n_diff$BIN))
 
 
@@ -85,7 +85,7 @@ master_diff_n_diff_construct %>%
     n = n()
   )
   
-#168 buildings were demolished or constructed mid-sample
+#564 buildings were demolished or constructed mid-sample
 #
 
 demolished <- master_diff_n_diff_construct %>% # 168 demolished
@@ -95,7 +95,7 @@ demolished <- master_diff_n_diff_construct %>% # 168 demolished
   filter(construction_year > min_violation_year) %>%
   pull(BIN)
 
-#1004 buildings built after 2019
+#4702 buildings built after 2019
 master_diff_n_diff_construct %>% filter(construction_year > 2019)
 
 #removing demolished and built too late
@@ -103,7 +103,7 @@ master_diff_n_diff_full <- master_diff_n_diff_construct %>%
   filter(!BIN %in% demolished,
          construction_year <= 2019)
 
-n_distinct(master_diff_n_diff_full$BIN) #156766 unique BINs
+n_distinct(master_diff_n_diff_full$BIN) #197556 unique BINs
 
 #checking that all of our fixed effects are present, OK if there are NAs in our
 #violations and evictions
@@ -112,10 +112,48 @@ print(na_counts)
 
 #COMPLETING THE PANEL###########################################################
 
-
 all_bins <- master_diff_n_diff_full %>% distinct(BIN)
-all_years <- tibble(year = seq(min(master_diff_n_diff_full$Year), max(master_diff_n_diff_full$Year)))
+all_years <- tibble(Year = 2017:2025)
 
+panel <- all_bins %>% cross_join(all_years)
+
+nrow(panel) == n_distinct(master_diff_n_diff_full$BIN) * 9
+
+panel <- panel %>%
+  left_join(violations, by = c("BIN", "Year")) %>%
+  left_join(evictions, by = c("BIN", "Year")) %>%
+  mutate(across(everything(), ~replace_na(.x, 0))) %>%
+  left_join(buildings, by = "BIN") %>%
+  left_join(hpdjuris, by = "BIN")
+
+skim(panel)
+
+#avg annual violations in primary treatment window (2017-2019)
+
+pre_period <- panel %>%
+  filter(Year >= 2017 & Year <= 2019) %>%
+  group_by(BIN) %>%
+  summarise(
+    avg_pre_violations = mean(viol_total, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+median_violations <- median(pre_period$avg_pre_violations)
+
+pre_period <- pre_period %>%
+  mutate(treated = if_else(avg_pre_violations > median_violations, 1, 0))
+
+panel <- panel %>%
+  left_join(pre_period, by = "BIN")
+
+panel <- panel %>%
+  mutate(
+    post           = if_else(Year >= 2022, 1, 0),
+    moratorium     = if_else(Year %in% c(2020, 2021), 1, 0),
+    treated_x_post = treated * post,
+    year_factor    = relevel(factor(Year), ref = "2019"),
+    building_age   = 2017 - `Construction Year`
+  )
 
 #FOR LATER#####################################################################
 #charges_invoices_qa=
@@ -144,7 +182,6 @@ all_years <- tibble(year = seq(min(master_diff_n_diff_full$Year), max(master_dif
 
 
 
-master_dataset[is.na(master_dataset)] <- 0
 
 #QA completeness
 master_summ=

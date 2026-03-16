@@ -81,6 +81,7 @@ viol_year <- viol_updated %>%
 viol_year[is.na(viol_year)]=0
 
 viol_year <- viol_year %>%
+  group_by(BIN, viol_year) %>%
   mutate(viol_total = sum(A,B,C,I))
 
 write.csv(viol_year, 'viol_by_year_13mar2026.csv', row.names=F)
